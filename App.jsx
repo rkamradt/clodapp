@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
  
 const styles = `
@@ -245,16 +246,63 @@ const styles = `
     text-align: center;
   }
  
+  .token-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: rgba(0,229,255,0.03);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-dim);
+  }
+
+  .token-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .token-raw {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    word-break: break-all;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .token-raw:hover { color: var(--accent); }
+
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
- 
+
   .card { animation: fadeIn 0.4s ease; }
 `
  
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split('.')[1]
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const { isAuthenticated, isLoading, user, loginWithRedirect, logout } = useAuth0()
+  const { isAuthenticated, isLoading, user, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
+  const [token, setToken] = useState(null)
+  const [claims, setClaims] = useState(null)
+
+  useEffect(() => {
+    if (!isAuthenticated) { setToken(null); setClaims(null); return }
+    getAccessTokenSilently()
+      .then(t => { setToken(t); setClaims(decodeJwtPayload(t)) })
+      .catch(() => { setToken(null); setClaims(null) })
+  }, [isAuthenticated, getAccessTokenSilently])
  
   return (
     <>
@@ -301,6 +349,36 @@ export default function App() {
                   </div>
                 )}
  
+                {isAuthenticated && token && (
+                  <div className="token-block">
+                    <div className="token-label">access token</div>
+                    {claims && (
+                      <>
+                        <div className="field">
+                          <span className="field-key">aud</span>
+                          <span className="field-val">{[].concat(claims.aud).join(', ')}</span>
+                        </div>
+                        <div className="field">
+                          <span className="field-key">exp</span>
+                          <span className="field-val">{new Date(claims.exp * 1000).toISOString()}</span>
+                        </div>
+                        <div className="field">
+                          <span className="field-key">scope</span>
+                          <span className="field-val">{claims.scope || '—'}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="token-label" style={{marginTop: '0.25rem'}}>raw (click to copy)</div>
+                    <div
+                      className="token-raw"
+                      onClick={() => navigator.clipboard.writeText(token)}
+                      title="Click to copy"
+                    >
+                      {token.slice(0, 40)}…
+                    </div>
+                  </div>
+                )}
+
                 {isAuthenticated ? (
                   <button
                     className="btn btn-logout"
