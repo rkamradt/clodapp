@@ -284,9 +284,11 @@ const styles = `
 `
  
 function decodeJwtPayload(token) {
+  const parts = token.split('.')
+  if (parts.length === 5) return { _encrypted: true }
+  if (parts.length !== 3) return null
   try {
-    const payload = token.split('.')[1]
-    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
   } catch {
     return null
   }
@@ -352,7 +354,13 @@ export default function App() {
                 {isAuthenticated && token && (
                   <div className="token-block">
                     <div className="token-label">access token</div>
-                    {claims && (
+                    {claims && claims._encrypted && (
+                      <div className="field">
+                        <span className="field-key">warning</span>
+                        <span className="field-val" style={{color: 'var(--danger)'}}>encrypted JWE — disable token encryption in Auth0 API settings to get a readable JWT</span>
+                      </div>
+                    )}
+                    {claims && !claims._encrypted && (
                       <>
                         <div className="field">
                           <span className="field-key">aud</span>
