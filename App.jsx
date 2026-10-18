@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { useAuth0 } from '@auth0/auth0-react'
+import { useKeycloak } from './src/KeycloakContext'
  
 const styles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -295,16 +294,11 @@ function decodeJwtPayload(token) {
 }
 
 export default function App() {
-  const { isAuthenticated, isLoading, user, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
-  const [token, setToken] = useState(null)
-  const [claims, setClaims] = useState(null)
-
-  useEffect(() => {
-    if (!isAuthenticated) { setToken(null); setClaims(null); return }
-    getAccessTokenSilently()
-      .then(t => { setToken(t); setClaims(decodeJwtPayload(t)) })
-      .catch(() => { setToken(null); setClaims(null) })
-  }, [isAuthenticated, getAccessTokenSilently])
+  const { keycloak, initialized } = useKeycloak()
+  const isAuthenticated = keycloak?.authenticated ?? false
+  const isLoading = !initialized
+  const token = keycloak?.token ?? null
+  const claims = token ? decodeJwtPayload(token) : null
  
   return (
     <>
@@ -331,22 +325,22 @@ export default function App() {
                   </div>
                 </div>
  
-                {isAuthenticated && user && (
+                {isAuthenticated && claims && (
                   <div className="user-info">
                     <div className="field">
                       <span className="field-key">identity</span>
                       <span className="field-val">
-                        {user.picture && <img src={user.picture} alt="" className="avatar" />}
-                        {user.name}
+                        {claims.picture && <img src={claims.picture} alt="" className="avatar" />}
+                        {claims.name}
                       </span>
                     </div>
                     <div className="field">
                       <span className="field-key">email</span>
-                      <span className="field-val">{user.email}</span>
+                      <span className="field-val">{claims.email}</span>
                     </div>
                     <div className="field">
                       <span className="field-key">sub</span>
-                      <span className="field-val">{user.sub}</span>
+                      <span className="field-val">{claims.sub}</span>
                     </div>
                   </div>
                 )}
@@ -390,14 +384,14 @@ export default function App() {
                 {isAuthenticated ? (
                   <button
                     className="btn btn-logout"
-                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                    onClick={() => keycloak.logout({ redirectUri: window.location.origin })}
                   >
                     terminate session
                   </button>
                 ) : (
                   <button
                     className="btn btn-login"
-                    onClick={() => loginWithRedirect()}
+                    onClick={() => keycloak.login()}
                   >
                     authenticate
                   </button>
@@ -408,7 +402,7 @@ export default function App() {
         </div>
  
         <div className="footer">
-          node: kubernetes.default.svc &nbsp;|&nbsp; auth: auth0 oidc
+          node: kubernetes.default.svc &nbsp;|&nbsp; auth: keycloak oidc
         </div>
       </div>
     </>
