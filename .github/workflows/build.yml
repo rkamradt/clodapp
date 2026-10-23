@@ -13,8 +13,4 @@ jobs:
     uses: rkamradt/ci-workflows/.github/workflows/site-image.yml@main
     with:
       helm-chart-dir: clodapp
-      build-args: |
-        VITE_KEYCLOAK_URL=${{ secrets.VITE_KEYCLOAK_URL }}
-        VITE_KEYCLOAK_REALM=${{ secrets.VITE_KEYCLOAK_REALM }}
-        VITE_KEYCLOAK_CLIENT_ID=${{ secrets.VITE_KEYCLOAK_CLIENT_ID }}
     secrets: inherit
